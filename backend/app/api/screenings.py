@@ -1,3 +1,4 @@
+import base64
 import json
 import shutil
 from pathlib import Path
@@ -236,7 +237,13 @@ def _build_detail_inference(
 
     def url_if_exists(path: Path):
         if path.exists():
-            return f"/uploads/{path.name}"
+            try:
+                mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+                with open(path, "rb") as f:
+                    encoded = base64.b64encode(f.read()).decode("utf-8")
+                return f"data:{mime};base64,{encoded}"
+            except Exception:
+                return f"/uploads/{path.name}"
         return None
 
     # IMPORTANT:

@@ -33,13 +33,22 @@ CLASS_TO_GRADE = {
 }
 
 
+import base64
+
+
 class InferenceService:
 
     @staticmethod
     def _url_for_upload(path: Optional[Path]) -> Optional[str]:
         if path is None or not path.exists():
             return None
-        return f"/uploads/{path.name}"
+        try:
+            mime = "image/png" if path.suffix.lower() == ".png" else "image/jpeg"
+            with open(path, "rb") as f:
+                encoded = base64.b64encode(f.read()).decode("utf-8")
+            return f"data:{mime};base64,{encoded}"
+        except Exception:
+            return f"/uploads/{path.name}"
 
     @staticmethod
     def _find_matlab_output(full_image_path: Path, suffix: str) -> Optional[Path]:
