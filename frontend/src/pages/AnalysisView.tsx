@@ -232,21 +232,28 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
             <div className="relative bg-black rounded-xl overflow-hidden min-h-[380px] flex items-center justify-center border border-slate-800">
               {activeViewTab === 'gradcam' && (
                 <img
-                  src={explainability.heatmap_url || screening.original_image_url}
+                  src={api.getMediaUrl(explainability.heatmap_url || screening.original_image_url)}
                   alt="Grad-CAM Heatmap"
                   className="max-h-[460px] w-auto object-contain"
                 />
               )}
-{activeViewTab === 'annotated' && (
+              {activeViewTab === 'preprocessed' && (
                 <img
-                  src={explainability.annotated_url || screening.original_image_url}
+                  src={api.getMediaUrl(explainability.preprocessed_url || screening.original_image_url)}
+                  alt="MATLAB Preprocessed"
+                  className="max-h-[460px] w-auto object-contain"
+                />
+              )}
+              {activeViewTab === 'annotated' && (
+                <img
+                  src={api.getMediaUrl(explainability.annotated_url || screening.original_image_url)}
                   alt="Annotated Detections"
                   className="max-h-[460px] w-auto object-contain"
                 />
               )}
               {activeViewTab === 'original' && (
                 <img
-                  src={screening.original_image_url}
+                  src={api.getMediaUrl(screening.original_image_url)}
                   alt="Original Retinal Fundus"
                   className="max-h-[460px] w-auto object-contain"
                 />
@@ -255,7 +262,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
                 <div className="grid grid-cols-2 gap-2 p-2 w-full">
                   <div className="text-center">
                     <img
-                      src={screening.original_image_url}
+                      src={api.getMediaUrl(screening.original_image_url)}
                       alt="Original"
                       className="w-full h-44 object-contain rounded bg-slate-950"
                     />
@@ -263,7 +270,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
                   </div>
                   <div className="text-center">
                     <img
-                      src={explainability.heatmap_url || screening.original_image_url}
+                      src={api.getMediaUrl(explainability.heatmap_url || screening.original_image_url)}
                       alt="Grad-CAM"
                       className="w-full h-44 object-contain rounded bg-slate-950"
                     />
@@ -272,7 +279,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
                   <div className="text-center">
                     {explainability.preprocessed_url ? (
                       <img
-                        src={explainability.preprocessed_url}
+                        src={api.getMediaUrl(explainability.preprocessed_url)}
                         alt="MATLAB Preprocessed"
                         className="w-full h-44 object-contain rounded bg-slate-950"
                       />
@@ -285,7 +292,7 @@ export const AnalysisView: React.FC<AnalysisViewProps> = ({
                   </div>
                   <div className="text-center">
                     <img
-                      src={explainability.annotated_url || screening.original_image_url}
+                      src={api.getMediaUrl(explainability.annotated_url || screening.original_image_url)}
                       alt="Detections"
                       className="w-full h-44 object-contain rounded bg-slate-950"
                     />

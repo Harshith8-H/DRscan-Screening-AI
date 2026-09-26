@@ -109,13 +109,13 @@ export const ExplainabilityStation: React.FC<ExplainabilityStationProps> = ({
   const { prediction, quality, lesions, explainability, recommendation, model } = inference;
 
   // Decide image source according to active layer
-  let displayedImage = screening.original_image_url;
+  let displayedImage = api.getMediaUrl(screening.original_image_url);
   if (activeLayer === 'gradcam' && explainability.heatmap_url) {
-    displayedImage = explainability.heatmap_url;
+    displayedImage = api.getMediaUrl(explainability.heatmap_url);
   } else if (activeLayer === 'preprocessed' && explainability.preprocessed_url) {
-    displayedImage = explainability.preprocessed_url;
+    displayedImage = api.getMediaUrl(explainability.preprocessed_url);
   } else if (activeLayer === 'annotated' && explainability.annotated_url) {
-    displayedImage = explainability.annotated_url;
+    displayedImage = api.getMediaUrl(explainability.annotated_url);
   }
 
   return (
