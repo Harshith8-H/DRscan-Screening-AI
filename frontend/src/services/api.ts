@@ -16,13 +16,44 @@ import {
   LocalMockStore
 } from './mockData';
 
-const API_ORIGIN = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
-const BASE_URL = `${API_ORIGIN}/api`;
+export function getApiOrigin(): string {
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('drscan_api_url');
+    if (custom && custom.trim()) {
+      return custom.trim().replace(/\/$/, '');
+    }
+  }
+  const envUrl = (import.meta.env.VITE_API_BASE_URL || '').trim().replace(/\/$/, '');
+  if (envUrl) {
+    return envUrl;
+  }
+  if (typeof window !== 'undefined' && window.location.hostname.includes('web.app')) {
+    return 'https://drscan-matlab-backend.loca.lt';
+  }
+  return '';
+}
+
+export function setApiOrigin(url: string): void {
+  if (typeof window !== 'undefined') {
+    if (!url || !url.trim()) {
+      localStorage.removeItem('drscan_api_url');
+    } else {
+      localStorage.setItem('drscan_api_url', url.trim().replace(/\/$/, ''));
+    }
+  }
+}
+
+function getBaseUrl(): string {
+  const origin = getApiOrigin();
+  return origin ? `${origin}/api` : '/api';
+}
 
 function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem('drscan_token');
+  const token = typeof window !== 'undefined' ? localStorage.getItem('drscan_token') : null;
   const headers: Record<string, string> = {
-    'Bypass-Tunnel-Reminder': 'true'
+    'Bypass-Tunnel-Reminder': 'true',
+    'bypass-tunnel-reminder': 'true',
+    'ngrok-skip-browser-warning': 'true'
   };
   if (token) {
     headers['Authorization'] = `Bearer ${token}`;
@@ -30,10 +61,21 @@ function getAuthHeader(): Record<string, string> {
   return headers;
 }
 
-async function safeFetchJson<T>(url: string, options?: RequestInit): Promise<T | null> {
+async function safeFetchJson<T>(endpoint: string, options?: RequestInit): Promise<T | null> {
   try {
+    const url = endpoint.startsWith('http://') || endpoint.startsWith('https://')
+      ? endpoint
+      : `${getBaseUrl()}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+
     const headers = new Headers(options?.headers || {});
     headers.set('Bypass-Tunnel-Reminder', 'true');
+    headers.set('bypass-tunnel-reminder', 'true');
+    headers.set('ngrok-skip-browser-warning', 'true');
+    const token = typeof window !== 'undefined' ? localStorage.getItem('drscan_token') : null;
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
     const res = await fetch(url, { ...options, headers });
     if (!res.ok) return null;
     const text = await res.text();
@@ -47,17 +89,39 @@ async function safeFetchJson<T>(url: string, options?: RequestInit): Promise<T |
 }
 
 export const api = {
+  getApiOrigin,
+  setApiOrigin,
+
+  async testConnection(): Promise<{ ok: boolean; message: string; version?: string }> {
+    try {
+      const origin = getApiOrigin();
+      const target = origin ? `${origin}/api/health` : '/api/health';
+      const headers = getAuthHeader();
+      const res = await fetch(target, { headers });
+      if (res.ok) {
+        const text = await res.text();
+        if (!text.trim().startsWith('<')) {
+          const data = JSON.parse(text);
+          return { ok: true, message: 'Connected to MATLAB AI Backend', version: data.version || 'v2.4' };
+        }
+      }
+      return { ok: false, message: `Received non-API response (status ${res.status})` };
+    } catch (e: any) {
+      return { ok: false, message: e?.message || 'Connection failed' };
+    }
+  },
+
   // Authentication
   async getDemoUsers(): Promise<User[]> {
-    const data = await safeFetchJson<User[]>(`${BASE_URL}/auth/demo-users`);
+    const data = await safeFetchJson<User[]>('/auth/demo-users');
     return data || INITIAL_DEMO_USERS;
   },
 
   async login(username: string, password: string): Promise<{ access_token: string; user: User }> {
     try {
-      const res = await fetch(`${BASE_URL}/auth/login`, {
+      const res = await fetch(`${getBaseUrl()}/auth/login`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify({ username, password })
       });
       const text = await res.text();
@@ -77,13 +141,13 @@ export const api = {
   },
 
   async getCurrentUser(): Promise<User> {
-    const data = await safeFetchJson<User>(`${BASE_URL}/auth/me`, { headers: getAuthHeader() });
+    const data = await safeFetchJson<User>('/auth/me', { headers: getAuthHeader() });
     return data || INITIAL_DEMO_USERS[0];
   },
 
   // Dashboard
   async getDashboardStats(): Promise<DashboardStats> {
-    const data = await safeFetchJson<DashboardStats>(`${BASE_URL}/screenings/dashboard-stats`, { headers: getAuthHeader() });
+    const data = await safeFetchJson<DashboardStats>('/screenings/dashboard-stats', { headers: getAuthHeader() });
     if (data) return data;
 
     const screenings = LocalMockStore.getScreenings();
@@ -109,8 +173,8 @@ export const api = {
 
   // Patients
   async getPatients(search?: string): Promise<Patient[]> {
-    const url = search ? `${BASE_URL}/patients?search=${encodeURIComponent(search)}` : `${BASE_URL}/patients`;
-    const data = await safeFetchJson<Patient[]>(url, { headers: getAuthHeader() });
+    const path = search ? `/patients?search=${encodeURIComponent(search)}` : '/patients';
+    const data = await safeFetchJson<Patient[]>(path, { headers: getAuthHeader() });
     if (data) return data;
 
     const local = LocalMockStore.getPatients();
@@ -121,7 +185,7 @@ export const api = {
 
   async createPatient(data: Partial<Patient>): Promise<Patient> {
     try {
-      const res = await fetch(`${BASE_URL}/patients`, {
+      const res = await fetch(`${getBaseUrl()}/patients`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify(data)
@@ -138,7 +202,7 @@ export const api = {
   },
 
   async getPatientHistory(patientId: number): Promise<PatientHistory> {
-    const data = await safeFetchJson<PatientHistory>(`${BASE_URL}/patients/${patientId}/history`, { headers: getAuthHeader() });
+    const data = await safeFetchJson<PatientHistory>(`/patients/${patientId}/history`, { headers: getAuthHeader() });
     if (data) return data;
 
     const patients = LocalMockStore.getPatients();
@@ -173,7 +237,7 @@ export const api = {
     if (params?.status) q.append('status', params.status);
     if (params?.referable_only) q.append('referable_only', 'true');
     if (params?.limit) q.append('limit', params.limit.toString());
-    const data = await safeFetchJson<Screening[]>(`${BASE_URL}/screenings?${q.toString()}`, { headers: getAuthHeader() });
+    const data = await safeFetchJson<Screening[]>(`/screenings?${q.toString()}`, { headers: getAuthHeader() });
     if (data) return data;
 
     let list = LocalMockStore.getScreenings();
@@ -183,7 +247,7 @@ export const api = {
   },
 
   async getScreeningDetail(screeningId: string): Promise<ScreeningDetail> {
-    const data = await safeFetchJson<ScreeningDetail>(`${BASE_URL}/screenings/${screeningId}`, { headers: getAuthHeader() });
+    const data = await safeFetchJson<ScreeningDetail>(`/screenings/${screeningId}`, { headers: getAuthHeader() });
     if (data) return data;
 
     const cached = localStorage.getItem(`drscan_screening_${screeningId}`);
@@ -193,7 +257,7 @@ export const api = {
   },
 
   async getSampleList(): Promise<SampleFundus[]> {
-    const data = await safeFetchJson<SampleFundus[]>(`${BASE_URL}/screenings/samples/list`);
+    const data = await safeFetchJson<SampleFundus[]>('/screenings/samples/list');
     return data || SAMPLE_FUNDUS_LIST;
   },
 
@@ -205,7 +269,7 @@ export const api = {
       formData.append('is_offline_queued', isOfflineQueued ? 'true' : 'false');
       formData.append('fundus_image', file);
 
-      const res = await fetch(`${BASE_URL}/screenings`, {
+      const res = await fetch(`${getBaseUrl()}/screenings`, {
         method: 'POST',
         headers: getAuthHeader(),
         body: formData
@@ -213,9 +277,11 @@ export const api = {
       const text = await res.text();
       if (res.ok && !text.trim().startsWith('<')) {
         return JSON.parse(text) as ScreeningDetail;
+      } else {
+        console.error('Upload screening failed:', res.status, text);
       }
     } catch (e) {
-      // fallback
+      console.error('Upload screening network error:', e);
     }
 
     return LocalMockStore.createMockScreening(patientId, eyeSide, undefined, file);
@@ -228,7 +294,7 @@ export const api = {
       formData.append('sample_filename', sampleFilename);
       formData.append('eye_side', eyeSide);
 
-      const res = await fetch(`${BASE_URL}/screenings/use-sample`, {
+      const res = await fetch(`${getBaseUrl()}/screenings/use-sample`, {
         method: 'POST',
         headers: getAuthHeader(),
         body: formData
@@ -236,9 +302,11 @@ export const api = {
       const text = await res.text();
       if (res.ok && !text.trim().startsWith('<')) {
         return JSON.parse(text) as ScreeningDetail;
+      } else {
+        console.error('Screen from sample failed:', res.status, text);
       }
     } catch (e) {
-      // fallback
+      console.error('Screen from sample network error:', e);
     }
 
     return LocalMockStore.createMockScreening(patientId, eyeSide, sampleFilename);
@@ -246,7 +314,7 @@ export const api = {
 
   // Doctor Reviews
   async getPendingReviews(): Promise<Screening[]> {
-    const data = await safeFetchJson<Screening[]>(`${BASE_URL}/reviews/pending`, { headers: getAuthHeader() });
+    const data = await safeFetchJson<Screening[]>('/reviews/pending', { headers: getAuthHeader() });
     if (data) return data;
     return LocalMockStore.getScreenings().filter(s => s.referable);
   },
@@ -259,7 +327,7 @@ export const api = {
     referral_facility?: string;
   }): Promise<any> {
     try {
-      const res = await fetch(`${BASE_URL}/reviews`, {
+      const res = await fetch(`${getBaseUrl()}/reviews`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
         body: JSON.stringify(payload)
@@ -282,7 +350,7 @@ export const api = {
 
   // Simulation
   async runSimulation(params: SimulationParams): Promise<SimulationResult> {
-    const data = await safeFetchJson<SimulationResult>(`${BASE_URL}/simulation/run`, {
+    const data = await safeFetchJson<SimulationResult>('/simulation/run', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(params)
@@ -325,12 +393,12 @@ export const api = {
 
   // Rural Offline Sync
   async getSyncStatus(): Promise<{ pending_offline_sync_count: number; is_online: boolean }> {
-    const data = await safeFetchJson<{ pending_offline_sync_count: number; is_online: boolean }>(`${BASE_URL}/sync/status`);
+    const data = await safeFetchJson<{ pending_offline_sync_count: number; is_online: boolean }>('/sync/status');
     return data || { pending_offline_sync_count: 0, is_online: true };
   },
 
   async syncOfflineBatch(): Promise<{ success: boolean; synced_records_count: number; message: string }> {
-    const data = await safeFetchJson<{ success: boolean; synced_records_count: number; message: string }>(`${BASE_URL}/sync/batch`, { method: 'POST' });
+    const data = await safeFetchJson<{ success: boolean; synced_records_count: number; message: string }>('/sync/batch', { method: 'POST' });
     return data || { success: true, synced_records_count: 1, message: 'All local offline screening batches synced successfully.' };
   },
 
@@ -339,10 +407,11 @@ export const api = {
   },
 
   downloadReport(screeningId: string): void {
-    if (API_ORIGIN) {
-      window.open(`${BASE_URL}/reports/${screeningId}/download`, '_blank');
+    const origin = getApiOrigin();
+    if (origin) {
+      window.open(`${origin}/api/reports/${screeningId}/download`, '_blank');
     } else {
-      window.print();
+      window.open(`/api/reports/${screeningId}/download`, '_blank');
     }
   },
 
@@ -356,7 +425,8 @@ export const api = {
     ) {
       return path;
     }
+    const origin = getApiOrigin();
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
-    return API_ORIGIN ? `${API_ORIGIN}${cleanPath}` : cleanPath;
+    return origin ? `${origin}${cleanPath}` : cleanPath;
   }
 };

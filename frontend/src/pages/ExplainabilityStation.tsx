@@ -284,11 +284,19 @@ export const ExplainabilityStation: React.FC<ExplainabilityStationProps> = ({
                 transform: `scale(${zoomLevel})`,
                 transition: 'transform 0.15s ease-out'
               }}
-              className="relative max-w-full max-h-[520px] flex items-center justify-center"
+              className="relative max-w-full max-h-[520px] flex flex-col items-center justify-center"
             >
               {activeLayer === 'preprocessed' && !explainability.preprocessed_url ? (
                 <div className="text-center text-xs text-[#bec6e0] border border-[#334155] rounded p-5 bg-[#0f172a]">
-                  MATLAB preprocessed image is not available for this screening.
+                  MATLAB preprocessed image is not available for this study.
+                </div>
+              ) : activeLayer === 'gradcam' && !explainability.heatmap_url ? (
+                <div className="text-center text-xs text-[#bec6e0] border border-[#334155] rounded p-5 bg-[#0f172a]">
+                  Grad-CAM activation overlay is not available for this study.
+                </div>
+              ) : activeLayer === 'annotated' && !explainability.annotated_url ? (
+                <div className="text-center text-xs text-[#bec6e0] border border-[#334155] rounded p-5 bg-[#0f172a]">
+                  Detection / evidence view is not available for this study.
                 </div>
               ) : (
                 <img
@@ -305,6 +313,14 @@ export const ExplainabilityStation: React.FC<ExplainabilityStationProps> = ({
                   className="max-h-[500px] w-auto object-contain rounded select-none shadow-2xl"
                 />
               )}
+
+              {/* Viewport Layer Badge */}
+              <div className="mt-2 bg-[#0f172a]/80 backdrop-blur-md px-3 py-1 rounded border border-[#334155] text-[10px] font-mono text-[#bec6e0]">
+                {activeLayer === 'original' && 'Layer 1: Raw Non-Mydriatic Fundus Capture'}
+                {activeLayer === 'preprocessed' && 'Layer 2: MATLAB CLAHE & Green Channel Contrast (224×224)'}
+                {activeLayer === 'gradcam' && 'Layer 3: EfficientNet-B0 Grad-CAM Heatmap Overlay'}
+                {activeLayer === 'annotated' && 'Layer 4: Pathological Lesion / Diagnostic Evidence View'}
+              </div>
             </div>
           </div>
 
