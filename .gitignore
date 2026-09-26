@@ -1,0 +1,37 @@
+# Dependencies
+node_modules/
+backend/.venv/
+backend/.venv_new/
+.venv/
+__pycache__/
+*.py[cod]
+*$py.class
+*.pytest_cache/
+
+# Production builds
+frontend/dist/
+dist/
+build/
+
+# Databases & local state
+*.db
+*.sqlite3
+backend/dr_screening.db
+dr_screening.db
+
+# Uploads & temporary artifacts
+backend/uploads/*
+!backend/uploads/.gitkeep
+backend/results/*
+!backend/results/.gitkeep
+
+# Environment variables
+.env
+.env.local
+.env.production.local
+
+# OS & Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

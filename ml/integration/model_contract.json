@@ -1,0 +1,134 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Explainable AI Diabetic Retinopathy Screening ML Contract",
+  "description": "Standard API & inference specification between Backend and ML Model for SIH26038",
+  "version": "1.0.0",
+  "input_specification": {
+    "supported_formats": ["image/jpeg", "image/png", "image/webp"],
+    "target_resolution": {
+      "width": 512,
+      "height": 512,
+      "channels": 3,
+      "color_mode": "RGB"
+    },
+    "preprocessing": [
+      "Aspect-ratio preserving circular cropping to retinal disk",
+      "Ben Graham contrast-enhancement (Gaussian blur weighted subtraction)",
+      "Z-score or [0, 1] normalization"
+    ],
+    "max_file_size_mb": 25.0
+  },
+  "output_specification": {
+    "type": "object",
+    "required": [
+      "success",
+      "model",
+      "prediction",
+      "quality",
+      "lesions",
+      "explainability",
+      "recommendation"
+    ],
+    "properties": {
+      "success": { "type": "boolean" },
+      "inference_time_ms": { "type": "number" },
+      "model": {
+        "type": "object",
+        "required": ["name", "version", "architecture", "dataset"],
+        "properties": {
+          "name": { "type": "string" },
+          "version": { "type": "string" },
+          "architecture": { "type": "string" },
+          "dataset": { "type": "string" },
+          "input_size": { "type": "string" }
+        }
+      },
+      "prediction": {
+        "type": "object",
+        "required": ["dr_level", "label", "confidence", "referable", "class_probabilities"],
+        "properties": {
+          "dr_level": { "type": "integer", "minimum": 0, "maximum": 4 },
+          "label": {
+            "type": "string",
+            "enum": [
+              "No DR (Grade 0)",
+              "Mild NPDR (Grade 1)",
+              "Moderate NPDR (Grade 2)",
+              "Severe NPDR (Grade 3)",
+              "Proliferative DR (Grade 4)"
+            ]
+          },
+          "confidence": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "referable": { "type": "boolean" },
+          "class_probabilities": {
+            "type": "object",
+            "properties": {
+              "grade_0": { "type": "number" },
+              "grade_1": { "type": "number" },
+              "grade_2": { "type": "number" },
+              "grade_3": { "type": "number" },
+              "grade_4": { "type": "number" }
+            }
+          }
+        }
+      },
+      "quality": {
+        "type": "object",
+        "required": ["score", "status", "sharpness", "illumination", "is_acceptable"],
+        "properties": {
+          "score": { "type": "number", "minimum": 0.0, "maximum": 1.0 },
+          "status": { "type": "string", "enum": ["good", "adequate", "poor"] },
+          "sharpness": { "type": "number" },
+          "illumination": { "type": "number" },
+          "is_acceptable": { "type": "boolean" },
+          "issues": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "lesions": {
+        "type": "object",
+        "required": ["microaneurysms", "hemorrhages", "exudates", "cotton_wool_spots"],
+        "properties": {
+          "microaneurysms": { "type": "integer", "minimum": 0 },
+          "hemorrhages": { "type": "integer", "minimum": 0 },
+          "exudates": { "type": "integer", "minimum": 0 },
+          "cotton_wool_spots": { "type": "integer", "minimum": 0 },
+          "foveal_involvement": { "type": "boolean" }
+        }
+      },
+      "explainability": {
+        "type": "object",
+        "required": ["gradcam_available", "heatmap_path", "lesion_mask_path", "annotated_path"],
+        "properties": {
+          "gradcam_available": { "type": "boolean" },
+          "heatmap_path": { "type": "string" },
+          "lesion_mask_path": { "type": "string" },
+          "annotated_path": { "type": "string" },
+          "salient_regions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": { "type": "string" },
+                "box": { "type": "array", "items": { "type": "number" } },
+                "confidence": { "type": "number" }
+              }
+            }
+          }
+        }
+      },
+      "recommendation": {
+        "type": "object",
+        "required": ["action", "urgency", "reason", "clinical_guideline"],
+        "properties": {
+          "action": {
+            "type": "string",
+            "enum": ["ROUTINE_ANNUAL_FOLLOWUP", "REFER_OPHTHALMOLOGIST", "URGENT_TERTIARY_REFERRAL", "RECAPTURE_IMAGE"]
+          },
+          "urgency": { "type": "string", "enum": ["routine", "priority_30_days", "immediate_48_hours", "recapture"] },
+          "reason": { "type": "string" },
+          "clinical_guideline": { "type": "string" }
+        }
+      }
+    }
+  }
+}

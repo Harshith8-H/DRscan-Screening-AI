@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: drscan-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: drscan_user
+      POSTGRES_PASSWORD: drscan_password
+      POSTGRES_DB: drscan_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: drscan-backend
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://drscan_user:drscan_password@db:5432/drscan_db
+      - SECRET_KEY=sih26038-super-secret-key-change-in-production-2026
+      - ML_PROVIDER=mock
+    volumes:
+      - ./backend/uploads:/app/uploads
+      - ./backend/results:/app/results
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: drscan-frontend
+    restart: always
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres_data:

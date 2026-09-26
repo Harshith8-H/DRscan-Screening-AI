@@ -1,0 +1,26 @@
+import matlab.engine
+
+
+class EfficientNetService:
+
+    _engine = None
+
+    @classmethod
+    def get_engine(cls):
+        if cls._engine is None:
+            print("Starting MATLAB Engine...")
+            cls._engine = matlab.engine.start_matlab()
+            print("MATLAB Engine started.")
+
+        return cls._engine
+
+    @classmethod
+    def test_connection(cls):
+        eng = cls.get_engine()
+
+        result = eng.eval("2 + 3", nargout=1)
+
+        return {
+            "status": "success",
+            "matlab_result": result
+        }
