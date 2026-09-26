@@ -239,7 +239,9 @@ export class LocalMockStore {
       }
     }
 
-    const defaultImg = 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=400&q=80';
+    const defaultImg = file
+      ? URL.createObjectURL(file)
+      : 'https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=400&q=80';
 
     const inference: InferenceResponse = {
       success: true,

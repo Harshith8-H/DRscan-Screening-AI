@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Patient, SampleFundus } from '../types';
 import { api } from '../services/api';
+import { INITIAL_PATIENTS, SAMPLE_FUNDUS_LIST } from '../services/mockData';
 
 interface NewScreeningProps {
   onScreeningCompleted: (screeningId: string) => void;
@@ -11,13 +12,13 @@ export const NewScreening: React.FC<NewScreeningProps> = ({
   onScreeningCompleted,
   isOfflineMode
 }) => {
-  const [patients, setPatients] = useState<Patient[]>([]);
-  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(null);
+  const [patients, setPatients] = useState<Patient[]>(INITIAL_PATIENTS);
+  const [selectedPatientId, setSelectedPatientId] = useState<number | null>(INITIAL_PATIENTS[0]?.id || null);
   const [eyeSide, setEyeSide] = useState<'RIGHT' | 'LEFT'>('RIGHT');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
 
-  const [samples, setSamples] = useState<SampleFundus[]>([]);
+  const [samples, setSamples] = useState<SampleFundus[]>(SAMPLE_FUNDUS_LIST);
   const [selectedSample, setSelectedSample] = useState<SampleFundus | null>(null);
 
   // Quick Register Modal
@@ -47,9 +48,13 @@ export const NewScreening: React.FC<NewScreeningProps> = ({
         api.getPatients(),
         api.getSampleList()
       ]);
-      setPatients(plist);
-      if (plist.length > 0) setSelectedPatientId(plist[0].id);
-      setSamples(slist);
+      if (plist && plist.length > 0) {
+        setPatients(plist);
+        setSelectedPatientId((prev) => prev || plist[0].id);
+      }
+      if (slist && slist.length > 0) {
+        setSamples(slist);
+      }
     } catch (e) {
       console.error(e);
     }
