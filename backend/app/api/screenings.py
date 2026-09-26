@@ -57,6 +57,21 @@ def _format_screening_response(
     ai = screening.ai_result
     rev = screening.doctor_review
 
+    original_url = screening.original_image_path or ""
+    if original_url:
+        original_name = Path(original_url).name
+        original_file = settings.UPLOAD_DIR / original_name
+        if not original_file.exists():
+            original_file = settings.SAMPLES_DIR / original_name
+        if original_file.exists():
+            try:
+                mime = "image/png" if original_file.suffix.lower() == ".png" else "image/jpeg"
+                with open(original_file, "rb") as f:
+                    encoded = base64.b64encode(f.read()).decode("utf-8")
+                original_url = f"data:{mime};base64,{encoded}"
+            except Exception:
+                original_url = screening.original_image_path
+
     return ScreeningResponse(
         id=screening.id,
         screening_id=screening.screening_id,
@@ -72,7 +87,7 @@ def _format_screening_response(
             else None
         ),
         eye_side=screening.eye_side,
-        original_image_url=screening.original_image_path,
+        original_image_url=original_url,
         status=screening.status,
         image_quality_score=screening.image_quality_score,
         image_quality_status=screening.image_quality_status,

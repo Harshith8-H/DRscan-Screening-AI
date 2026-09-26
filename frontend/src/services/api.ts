@@ -348,7 +348,14 @@ export const api = {
 
   getMediaUrl(path?: string): string {
     if (!path) return '';
-    if (path.startsWith('http://') || path.startsWith('https://')) return path;
+    if (
+      path.startsWith('http://') ||
+      path.startsWith('https://') ||
+      path.startsWith('data:') ||
+      path.startsWith('blob:')
+    ) {
+      return path;
+    }
     const cleanPath = path.startsWith('/') ? path : `/${path}`;
     return API_ORIGIN ? `${API_ORIGIN}${cleanPath}` : cleanPath;
   }
