@@ -21,12 +21,20 @@ const BASE_URL = `${API_ORIGIN}/api`;
 
 function getAuthHeader(): Record<string, string> {
   const token = localStorage.getItem('drscan_token');
-  return token ? { Authorization: `Bearer ${token}` } : {};
+  const headers: Record<string, string> = {
+    'Bypass-Tunnel-Reminder': 'true'
+  };
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  return headers;
 }
 
 async function safeFetchJson<T>(url: string, options?: RequestInit): Promise<T | null> {
   try {
-    const res = await fetch(url, options);
+    const headers = new Headers(options?.headers || {});
+    headers.set('Bypass-Tunnel-Reminder', 'true');
+    const res = await fetch(url, { ...options, headers });
     if (!res.ok) return null;
     const text = await res.text();
     if (text.trim().startsWith('<')) {
